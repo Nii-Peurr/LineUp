@@ -1,16 +1,29 @@
 import { CustomerPortal } from "@/components/customer/customer-portal";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getQueueHistory, getQueueSnapshot, listDirectory } from "@/lib/data-store";
 import { ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
+async function loadCustomerPageData() {
+  try {
+    const [directory, initialSnapshot, history] = await Promise.all([
+      listDirectory(),
+      getQueueSnapshot(),
+      getQueueHistory()
+    ]);
+
+    return { directory, initialSnapshot, history };
+  } catch {
+    return null;
+  }
+}
+
 export default async function HomePage() {
-  const [directory, initialSnapshot, history] = await Promise.all([
-    listDirectory(),
-    getQueueSnapshot(),
-    getQueueHistory()
-  ]);
+  const customerData = await loadCustomerPageData();
 
   return (
     <>
@@ -58,11 +71,27 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
-        <CustomerPortal
-          directory={directory}
-          initialSnapshot={initialSnapshot}
-          history={history}
-        />
+        {customerData ? (
+          <CustomerPortal
+            directory={customerData.directory}
+            initialSnapshot={customerData.initialSnapshot}
+            history={customerData.history}
+          />
+        ) : (
+          <section className="queue-grid min-h-[calc(100vh-65px)] px-4 py-6 sm:px-6">
+            <Card className="mx-auto max-w-2xl">
+              <CardHeader>
+                <CardTitle>No queue available</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  LineUp is ready, but no customer queue is available yet. Once a business owner
+                  creates a queue, customers will be able to join from this page.
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        )}
       </main>
     </>
   );

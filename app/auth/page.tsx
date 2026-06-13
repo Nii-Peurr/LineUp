@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { AuthOnboarding } from "@/components/auth/auth-onboarding";
 import { SiteNav } from "@/components/site-nav";
 
+export const dynamic = "force-dynamic";
+
 export default function AuthPage() {
   return (
     <>

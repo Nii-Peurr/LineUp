@@ -5,6 +5,8 @@ import { getBusinessDashboardData, usingDemoStore } from "@/lib/data-store";
 import { hasSupabaseConfig } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function BusinessPage({
   searchParams
 }: {
