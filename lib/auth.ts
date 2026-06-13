@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getSupabaseAdmin, getSupabaseAuthClient } from "@/lib/supabase/server";
 import type { Role, User } from "@/lib/types";
 
 const ACCESS_COOKIE = "lineup_access_token";
@@ -71,19 +71,25 @@ export async function getRequestAccessToken(request?: Request) {
 }
 
 export async function getCurrentProfile(request?: Request) {
-  const supabase = getSupabaseAdmin();
+  const authClient = getSupabaseAuthClient();
   const token = await getRequestAccessToken(request);
 
-  if (!supabase || !token) {
+  if (!authClient || !token) {
     return null;
   }
 
   const {
     data: { user },
     error: userError
-  } = await supabase.auth.getUser(token);
+  } = await authClient.auth.getUser(token);
 
   if (userError || !user) {
+    return null;
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
     return null;
   }
 
@@ -131,4 +137,3 @@ export async function isBusinessMember(userId: string, businessId: string) {
 
   return Boolean(membership);
 }
-

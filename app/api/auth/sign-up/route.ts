@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Supabase Auth is not configured. Add Supabase URL, anon key, and service role key to enable saved accounts."
+            "Supabase Auth is not configured. Add Supabase URL and anon key to enable account creation."
         },
         { status: 503 }
       );
@@ -41,10 +41,9 @@ export async function POST(request: Request) {
 
     const input = signUpSchema.parse(await request.json());
     const authClient = getSupabaseAuthClient();
-    const admin = getSupabaseAdmin();
 
-    if (!authClient || !admin) {
-      throw new Error("Supabase is not configured.");
+    if (!authClient) {
+      throw new Error("Supabase Auth is not configured.");
     }
 
     if (input.role === "business_owner" && !input.business) {
@@ -71,6 +70,18 @@ export async function POST(request: Request) {
 
     if (data.session) {
       await setSessionCookies(data.session);
+    }
+
+    const admin = getSupabaseAdmin();
+
+    if (!admin) {
+      return NextResponse.json(
+        {
+          error:
+            "Supabase database admin key is not configured correctly. Account auth succeeded, but LineUp could not save the profile."
+        },
+        { status: 503 }
+      );
     }
 
     const { error: profileError } = await admin.from("profiles").upsert({

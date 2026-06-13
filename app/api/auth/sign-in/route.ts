@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Supabase Auth is not configured. Add Supabase URL, anon key, and service role key to enable saved accounts."
+            "Supabase Auth is not configured. Add Supabase URL and anon key to enable sign in."
         },
         { status: 503 }
       );
@@ -26,10 +26,9 @@ export async function POST(request: Request) {
 
     const input = signInSchema.parse(await request.json());
     const authClient = getSupabaseAuthClient();
-    const admin = getSupabaseAdmin();
 
-    if (!authClient || !admin) {
-      throw new Error("Supabase is not configured.");
+    if (!authClient) {
+      throw new Error("Supabase Auth is not configured.");
     }
 
     const { data, error } = await authClient.auth.signInWithPassword(input);
@@ -40,14 +39,17 @@ export async function POST(request: Request) {
 
     await setSessionCookies(data.session);
 
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("id, full_name, email, role")
-      .eq("id", data.user.id)
-      .maybeSingle();
+    const admin = getSupabaseAdmin();
+    const { data: profile } = admin
+      ? await admin
+          .from("profiles")
+          .select("id, full_name, email, role")
+          .eq("id", data.user.id)
+          .maybeSingle()
+      : { data: null };
     const role = profile?.role ?? "customer";
 
-    if (!profile) {
+    if (!profile && admin) {
       await admin.from("profiles").upsert({
         id: data.user.id,
         full_name:
