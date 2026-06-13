@@ -3,9 +3,26 @@
 LineUp is structured as a multi-tenant SaaS with four layers:
 
 1. Product surfaces: customer portal, business dashboard, super admin.
-2. API routes: queue mutations, payments, notifications, AI, directory data.
+2. API routes: auth, onboarding, business settings, queue mutations, payments, notifications, AI, directory data.
 3. Domain services: queue engine, plans, provider adapters.
-4. Data layer: Supabase PostgreSQL with RLS.
+4. Data layer: Supabase PostgreSQL with RLS, with an in-memory demo fallback only when Supabase credentials are missing.
+
+## Data Modes
+
+`lib/data-store.ts` is the runtime data boundary. It uses Supabase when `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are configured. If those variables are missing, it delegates to `lib/store.ts`, the seeded in-memory demo store.
+
+Customer-ready MVP mode stores businesses, locations, queues, queue entries, profiles, memberships, staff, payments, and insights in Supabase. Demo mode is intentionally non-durable and exists for no-key public demos.
+
+## Auth And Roles
+
+Supabase Auth handles email/password signup and sign-in. LineUp stores the app role in `profiles.role`.
+
+- `customer`: can use the customer queue flow.
+- `business_owner`: can onboard a business, open `/business`, update settings, and manage queues for owned/member businesses.
+- `staff`: can manage queues for member businesses.
+- `admin`: can open `/admin` and manage platform data.
+
+Business and admin pages are role-gated when Supabase is configured. Queue mutation APIs also check role and business membership for business-only actions.
 
 ## Queue Flow
 
@@ -35,5 +52,5 @@ The demo path reports skipped providers when credentials are missing.
 - Add Supabase Realtime channels for active queues.
 - Persist notification jobs in `notification_events` before provider calls.
 - Add idempotency keys for Stripe webhooks and queue mutations.
-- Add role-gated middleware for `/business` and `/admin`.
+- Add refresh-token rotation for long-lived business dashboard sessions.
 - Add rate limits per IP, user, and business.

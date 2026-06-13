@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getQueueSnapshot } from "@/lib/store";
+import { getQueueSnapshot } from "@/lib/data-store";
 
 export async function GET(
   _request: Request,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { queueId } = await context.params;
-    return NextResponse.json({ snapshot: getQueueSnapshot(queueId) });
+    return NextResponse.json({ snapshot: await getQueueSnapshot(queueId) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to load queue." },

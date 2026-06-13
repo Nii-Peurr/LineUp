@@ -15,7 +15,7 @@ import {
   UserMinus,
   Users
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { DemoModeBadge } from "@/components/demo-mode-badge";
 import { MetricCard } from "@/components/metric-card";
 import { QueueList } from "@/components/queue-list";
@@ -39,9 +39,16 @@ type BusinessDashboardData = {
 export function BusinessDashboard({ initialData }: { initialData: BusinessDashboardData }) {
   const [data, setData] = useState(initialData);
   const [selectedQueueId, setSelectedQueueId] = useState(initialData.snapshots[0]?.queue.id);
-  const [averageServiceMinutes, setAverageServiceMinutes] = useState(
-    initialData.snapshots[0]?.queue.averageServiceMinutes ?? 15
-  );
+  const [settings, setSettings] = useState({
+    businessName: initialData.business.name,
+    locationName: initialData.snapshots[0]?.location.name ?? "",
+    locationAddress: initialData.snapshots[0]?.location.address ?? "",
+    queueName: initialData.snapshots[0]?.queue.name ?? "",
+    averageServiceMinutes: initialData.snapshots[0]?.queue.averageServiceMinutes ?? 15,
+    fastPassEnabled: initialData.business.fastPassMode !== "disabled",
+    fastPassPrice: (initialData.business.fastPassPriceCents / 100).toFixed(2)
+  });
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const snapshot = useMemo(
     () =>
@@ -52,6 +59,22 @@ export function BusinessDashboard({ initialData }: { initialData: BusinessDashbo
   const serving = snapshot?.servingEntry;
   const selectedLocation = snapshot?.location;
   const activeStaff = data.staff.filter((member) => member.active).length;
+
+  useEffect(() => {
+    if (!snapshot) {
+      return;
+    }
+
+    setSettings({
+      businessName: data.business.name,
+      locationName: snapshot.location.name,
+      locationAddress: snapshot.location.address,
+      queueName: snapshot.queue.name,
+      averageServiceMinutes: snapshot.queue.averageServiceMinutes,
+      fastPassEnabled: data.business.fastPassMode !== "disabled",
+      fastPassPrice: (data.business.fastPassPriceCents / 100).toFixed(2)
+    });
+  }, [data.business, snapshot]);
 
   function replaceSnapshot(next: QueueSnapshot) {
     setData((current) => ({
@@ -83,6 +106,46 @@ export function BusinessDashboard({ initialData }: { initialData: BusinessDashbo
       });
       const payload = (await response.json()) as { snapshot: QueueSnapshot };
       replaceSnapshot(payload.snapshot);
+    });
+  }
+
+  function saveSettings() {
+    if (!snapshot) {
+      return;
+    }
+
+    setSettingsMessage(null);
+
+    startTransition(async () => {
+      const response = await fetch("/api/business/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId: data.business.id,
+          locationId: snapshot.location.id,
+          queueId: snapshot.queue.id,
+          businessName: settings.businessName,
+          locationName: settings.locationName,
+          locationAddress: settings.locationAddress,
+          queueName: settings.queueName,
+          averageServiceMinutes: settings.averageServiceMinutes,
+          fastPassEnabled: settings.fastPassEnabled,
+          fastPassPriceCents: Math.max(0, Math.round(Number(settings.fastPassPrice) * 100))
+        })
+      });
+      const payload = (await response.json()) as {
+        dashboard?: BusinessDashboardData;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.dashboard) {
+        setSettingsMessage(payload.error ?? "Unable to save settings.");
+        return;
+      }
+
+      setData(payload.dashboard);
+      setSelectedQueueId(snapshot.queue.id);
+      setSettingsMessage("Settings saved.");
     });
   }
 
@@ -242,26 +305,99 @@ export function BusinessDashboard({ initialData }: { initialData: BusinessDashbo
         <div className="space-y-5">
           <Card>
             <CardHeader>
-              <CardTitle>Queue Controls</CardTitle>
+              <CardTitle>Business Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="block text-sm font-medium">
-                Average service time
-                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                  <Input
-                    className="h-12 sm:h-10"
-                    type="number"
-                    min={1}
-                    max={120}
-                    value={averageServiceMinutes}
-                    onChange={(event) => setAverageServiceMinutes(Number(event.target.value))}
-                  />
-                  <Button className="h-12 sm:h-10" variant="secondary">
-                    <Timer className="h-4 w-4" />
-                    Save
-                  </Button>
-                </div>
+                Business name
+                <Input
+                  className="mt-2 h-12 sm:h-10"
+                  value={settings.businessName}
+                  onChange={(event) =>
+                    setSettings({ ...settings, businessName: event.target.value })
+                  }
+                />
               </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium">
+                  Location
+                  <Input
+                    className="mt-2 h-12 sm:h-10"
+                    value={settings.locationName}
+                    onChange={(event) =>
+                      setSettings({ ...settings, locationName: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="block text-sm font-medium">
+                  Queue name
+                  <Input
+                    className="mt-2 h-12 sm:h-10"
+                    value={settings.queueName}
+                    onChange={(event) =>
+                      setSettings({ ...settings, queueName: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              <label className="block text-sm font-medium">
+                Address
+                <Input
+                  className="mt-2 h-12 sm:h-10"
+                  value={settings.locationAddress}
+                  onChange={(event) =>
+                    setSettings({ ...settings, locationAddress: event.target.value })
+                  }
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Average service time
+                <Input
+                  className="mt-2 h-12 sm:h-10"
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={settings.averageServiceMinutes}
+                  onChange={(event) =>
+                    setSettings({
+                      ...settings,
+                      averageServiceMinutes: Number(event.target.value)
+                    })
+                  }
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium">
+                  Fast Pass
+                  <Select
+                    className="mt-2 h-12 sm:h-10"
+                    value={settings.fastPassEnabled ? "enabled" : "disabled"}
+                    onChange={(event) =>
+                      setSettings({
+                        ...settings,
+                        fastPassEnabled: event.target.value === "enabled"
+                      })
+                    }
+                  >
+                    <option value="enabled">Enabled</option>
+                    <option value="disabled">Disabled</option>
+                  </Select>
+                </label>
+                <label className="block text-sm font-medium">
+                  Fast Pass price
+                  <Input
+                    className="mt-2 h-12 sm:h-10"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={settings.fastPassPrice}
+                    disabled={!settings.fastPassEnabled}
+                    onChange={(event) =>
+                      setSettings({ ...settings, fastPassPrice: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
               <div className="grid gap-3 rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-muted-foreground">Fast Pass</span>
@@ -280,6 +416,18 @@ export function BusinessDashboard({ initialData }: { initialData: BusinessDashbo
                   <span className="text-sm font-semibold">{activeStaff}</span>
                 </div>
               </div>
+              {settingsMessage ? (
+                <div
+                  role="status"
+                  className="rounded-lg border bg-muted/60 p-3 text-sm text-muted-foreground"
+                >
+                  {settingsMessage}
+                </div>
+              ) : null}
+              <Button className="h-12 w-full sm:h-10" onClick={saveSettings} disabled={isPending}>
+                <Timer className="h-4 w-4" />
+                Save Settings
+              </Button>
             </CardContent>
           </Card>
 

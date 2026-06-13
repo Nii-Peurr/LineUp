@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { predictWaitTime } from "@/lib/services/openai";
-import { getQueueSnapshot } from "@/lib/store";
+import { getQueueSnapshot } from "@/lib/data-store";
 
 const schema = z.object({
   queueId: z.string().min(1).default("queue_greenbelt_walkins")
@@ -10,7 +10,7 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     const { queueId } = schema.parse(await request.json());
-    const prediction = await predictWaitTime(getQueueSnapshot(queueId));
+    const prediction = await predictWaitTime(await getQueueSnapshot(queueId));
 
     return NextResponse.json(prediction);
   } catch (error) {

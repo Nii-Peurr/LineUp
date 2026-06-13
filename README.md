@@ -7,10 +7,13 @@ LineUp is a production-oriented SaaS MVP for replacing physical lines with virtu
 - Next.js App Router, TypeScript, TailwindCSS, and shadcn-style primitives.
 - Customer portal with join, leave, position, people ahead, wait estimates, favorites, history, dark mode, SMS/email/push settings, and Fast Pass.
 - Business dashboard with multi-location queues, call next, skip, served, remove, pause/resume, service-time controls, metrics, and AI insights.
+- Business signup/onboarding flow that creates an owner profile, business, location, staff record, and first queue.
+- Role access for customers, business owners/staff, and admins when Supabase credentials are configured.
 - Super admin panel for businesses, users, subscriptions, revenue, Fast Pass settings, and platform analytics.
-- API routes for queue management, Fast Pass, Stripe checkout/webhooks, notifications, AI wait prediction, and AI insights.
+- API routes for auth, onboarding, business settings, queue management, Fast Pass, Stripe checkout/webhooks, notifications, AI wait prediction, and AI insights.
 - Supabase PostgreSQL schema with RLS policies, seed data, indexes, payments, subscriptions, notifications, and AI insight tables.
-- Demo in-memory data path so the app runs locally or on Vercel before credentials are configured.
+- Supabase-backed runtime data layer for saved businesses, queues, and queue entries.
+- Demo in-memory data path only when Supabase credentials are missing.
 - Vitest coverage for the queue engine and Fast Pass rules.
 
 ## Quick Start
@@ -24,17 +27,48 @@ Open [http://localhost:3000](http://localhost:3000).
 
 PowerShell may block `npm.ps1` on Windows. Use `npm.cmd` as shown above.
 
+## Customer-Ready MVP Mode
+
+Configure Supabase to run LineUp with saved data for real shops.
+
+Required Supabase variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+With those set, `/auth` lets a business owner create an account and onboard a shop. The flow creates:
+
+- Business owner profile
+- Business record
+- Business membership
+- First location
+- First staff member
+- First queue
+
+The business dashboard then reads and writes persisted Supabase data. Owners can update business name, location, queue name, average service time, Fast Pass enabled/disabled, and Fast Pass price.
+
+Role access:
+
+- Customers can use the public customer queue flow.
+- Business owners and staff can access `/business` and mutate queues for their business.
+- Admins can access `/admin`.
+- In no-key demo mode, these pages remain open for demos.
+
 ## Public Demo Mode
 
 LineUp is ready to deploy as a public Vercel demo without real provider keys.
 
-When credentials are missing:
+When Supabase credentials are missing:
 
 - Queue data uses the in-memory demo store seeded with Fade Masters sample data.
+- Business and admin pages stay open for public demos.
+
+When optional provider credentials are missing:
+
 - Stripe plan upgrades and Fast Pass purchases return demo checkout URLs instead of calling Stripe.
 - OpenAI wait prediction and business insights use deterministic demo responses.
 - SMS, email, and push notifications return skipped provider results instead of sending messages.
-- Supabase is optional; the demo pages and API routes use local seed data.
 - Stripe webhooks acknowledge demo requests when Stripe credentials or signatures are missing.
 
 This mode is intended for demos only. Data resets when the serverless runtime restarts, and demo queue state is not shared durable production data.
@@ -43,9 +77,12 @@ This mode is intended for demos only. Data resets when the serverless runtime re
 
 For a Vercel public demo, no environment variables are required. You can deploy with the blank values from `.env.example` or omit them entirely.
 
-For connected production mode, configure:
+For customer-ready MVP mode, configure Supabase first:
 
 - Supabase URL, anon key, and service role key.
+
+For connected production mode, also configure:
+
 - Stripe secret key and webhook secret.
 - OpenAI API key for AI predictions and business insights.
 - Twilio credentials for SMS.
@@ -113,7 +150,7 @@ Deploy a public demo to Vercel:
 Deploy connected production mode:
 
 1. Create Supabase project and run the SQL files.
-2. Configure OAuth providers in Supabase Auth: Google, Apple, and email magic links.
+2. Configure Supabase Auth email/password. Disable email confirmation for a frictionless live demo, or keep confirmation on for stricter onboarding.
 3. Create Stripe prices with lookup keys from `lib/plans.ts`.
 4. Add production environment variables in Vercel.
 5. Add Stripe webhook endpoint: `https://YOUR_DOMAIN/api/stripe/webhook`.

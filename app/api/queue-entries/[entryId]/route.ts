@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
+  getQueueSnapshot,
   getQueueEntry,
   leaveQueueByEntry,
   markQueueEntryServed,
-  skipQueueEntry
-} from "@/lib/store";
+  skipQueueEntry,
+  usingDemoStore
+} from "@/lib/data-store";
+import { getCurrentProfile, hasRole, isBusinessMember } from "@/lib/auth";
 import { notifyQueueEntry } from "@/lib/services/notifications";
 
 const actionSchema = z.object({
@@ -19,18 +22,31 @@ async function mutate(
   try {
     const { entryId } = await context.params;
     const { action } = actionSchema.parse(await request.json());
-    const entry = getQueueEntry(entryId);
+    const entry = await getQueueEntry(entryId);
 
     if (!entry) {
       return NextResponse.json({ error: "Queue entry not found." }, { status: 404 });
     }
 
+    if (!usingDemoStore() && action !== "leave") {
+      const snapshot = await getQueueSnapshot(entry.queueId);
+      const profile = await getCurrentProfile(request);
+      const hasBusinessAccess =
+        hasRole(profile, ["business_owner", "staff", "admin"]) &&
+        (profile?.role === "admin" ||
+          Boolean(profile && (await isBusinessMember(profile.id, snapshot.business.id))));
+
+      if (!hasBusinessAccess) {
+        return NextResponse.json({ error: "Business owner access required." }, { status: 403 });
+      }
+    }
+
     const snapshot =
       action === "leave"
-        ? leaveQueueByEntry(entryId)
+        ? await leaveQueueByEntry(entryId)
         : action === "skip"
-          ? skipQueueEntry(entryId)
-          : markQueueEntryServed(entryId);
+          ? await skipQueueEntry(entryId)
+          : await markQueueEntryServed(entryId);
 
     if (action === "skip") {
       await notifyQueueEntry(entry, "Your turn was skipped. Please check in with the business.");

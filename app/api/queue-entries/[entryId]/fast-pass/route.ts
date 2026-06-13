@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buyFastPass, getQueueEntry, getQueueSnapshot } from "@/lib/store";
+import { buyFastPass, getQueueEntry, getQueueSnapshot } from "@/lib/data-store";
 import { createFastPassCheckoutSession } from "@/lib/services/stripe";
 import { notifyQueueEntry } from "@/lib/services/notifications";
 import type { QueueSnapshot } from "@/lib/types";
@@ -31,7 +31,7 @@ export async function POST(
   const { entryId } = await context.params;
 
   try {
-    const entry = getQueueEntry(entryId);
+    const entry = await getQueueEntry(entryId);
 
     if (!entry) {
       return NextResponse.json(
@@ -45,7 +45,7 @@ export async function POST(
       );
     }
 
-    const currentSnapshot = getQueueSnapshot(entry.queueId);
+    const currentSnapshot = await getQueueSnapshot(entry.queueId);
     const unavailableMessage = getFastPassUnavailableMessage(currentSnapshot, entryId);
 
     if (unavailableMessage) {
@@ -77,7 +77,7 @@ export async function POST(
       });
     }
 
-    const snapshot = buyFastPass(entryId);
+    const snapshot = await buyFastPass(entryId);
     const promoted = snapshot.entries.find((candidate) => candidate.id === entryId);
 
     if (promoted) {

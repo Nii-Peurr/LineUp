@@ -1,11 +1,17 @@
 import { CustomerPortal } from "@/components/customer/customer-portal";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
-import { getQueueHistory, getQueueSnapshot, listDirectory } from "@/lib/store";
+import { getQueueHistory, getQueueSnapshot, listDirectory } from "@/lib/data-store";
 import { ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [directory, initialSnapshot, history] = await Promise.all([
+    listDirectory(),
+    getQueueSnapshot(),
+    getQueueHistory()
+  ]);
+
   return (
     <>
       <SiteNav />
@@ -53,9 +59,9 @@ export default function HomePage() {
           </div>
         </section>
         <CustomerPortal
-          directory={listDirectory()}
-          initialSnapshot={getQueueSnapshot()}
-          history={getQueueHistory()}
+          directory={directory}
+          initialSnapshot={initialSnapshot}
+          history={history}
         />
       </main>
     </>

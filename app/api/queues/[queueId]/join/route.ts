@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getQueueSnapshot, joinQueue } from "@/lib/store";
+import { getQueueSnapshot, joinQueue } from "@/lib/data-store";
 import { notifyQueueEntry } from "@/lib/services/notifications";
 
 const joinSchema = z.object({
@@ -18,8 +18,8 @@ export async function POST(
   try {
     const { queueId } = await context.params;
     const payload = joinSchema.parse(await request.json());
-    const entry = joinQueue({ queueId, ...payload });
-    const snapshot = getQueueSnapshot(queueId);
+    const entry = await joinQueue({ queueId, ...payload });
+    const snapshot = await getQueueSnapshot(queueId);
     await notifyQueueEntry(
       entry,
       `You joined ${snapshot.business.name}. You are position ${entry.position}.`

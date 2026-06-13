@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { notifyQueueEntry } from "@/lib/services/notifications";
-import { getQueueEntry } from "@/lib/store";
+import { getQueueEntry } from "@/lib/data-store";
 
 const notificationSchema = z.object({
   entryId: z.string().min(1),
@@ -11,7 +11,7 @@ const notificationSchema = z.object({
 export async function POST(request: Request) {
   try {
     const { entryId, message } = notificationSchema.parse(await request.json());
-    const entry = getQueueEntry(entryId);
+    const entry = await getQueueEntry(entryId);
 
     if (!entry) {
       return NextResponse.json({ error: "Queue entry not found." }, { status: 404 });

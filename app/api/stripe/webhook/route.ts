@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buyFastPass } from "@/lib/store";
+import { buyFastPass } from "@/lib/data-store";
 import { getStripeClient } from "@/lib/services/stripe";
 
 export async function POST(request: Request) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       const session = event.data.object;
 
       if (session.metadata?.purchaseType === "fast_pass" && session.metadata.entryId) {
-        buyFastPass(session.metadata.entryId);
+        await buyFastPass(session.metadata.entryId);
       }
     }
 

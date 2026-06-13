@@ -33,6 +33,7 @@ export function AdminDashboard({
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+  const [adminMessage, setAdminMessage] = useState<string | null>(null);
   const filteredBusinesses = useMemo(
     () =>
       businesses.filter((business) => {
@@ -42,6 +43,22 @@ export function AdminDashboard({
       }),
     [businesses, query, status]
   );
+
+  function selectBusinessAction(business: Business, action: "manage" | "suspend") {
+    setAdminMessage(
+      action === "manage"
+        ? `${business.name} selected for management.`
+        : `${business.name} selected for suspension review.`
+    );
+  }
+
+  function selectPlatformAction(action: "stripe" | "fast-pass") {
+    setAdminMessage(
+      action === "stripe"
+        ? "Stripe plan management selected."
+        : "Fast Pass defaults selected."
+    );
+  }
 
   return (
     <section className="space-y-5">
@@ -79,6 +96,15 @@ export function AdminDashboard({
           </Select>
         </div>
       </div>
+
+      {adminMessage ? (
+        <div
+          role="status"
+          className="rounded-lg border bg-muted/60 p-3 text-sm text-muted-foreground"
+        >
+          {adminMessage}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -148,7 +174,12 @@ export function AdminDashboard({
                       <span className="font-semibold">{business.planStatus}</span>
                     </div>
                   </div>
-                  <Button className="mt-4 h-12 w-full" variant="secondary">
+                  <Button
+                    className="mt-4 h-12 w-full"
+                    type="button"
+                    variant="secondary"
+                    onClick={() => selectBusinessAction(business, "manage")}
+                  >
                     Manage
                   </Button>
                 </div>
@@ -191,10 +222,21 @@ export function AdminDashboard({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
-                          <Button size="sm" variant="secondary">
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="secondary"
+                            onClick={() => selectBusinessAction(business, "manage")}
+                          >
                             Manage
                           </Button>
-                          <Button size="sm" variant="ghost" title="Suspend account">
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            title="Suspend account"
+                            onClick={() => selectBusinessAction(business, "suspend")}
+                          >
                             <Ban className="h-4 w-4" />
                           </Button>
                         </div>
@@ -269,11 +311,21 @@ export function AdminDashboard({
               <CardTitle>Subscription Controls</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full" variant="secondary">
+              <Button
+                className="w-full"
+                type="button"
+                variant="secondary"
+                onClick={() => selectPlatformAction("stripe")}
+              >
                 <Gauge className="h-4 w-4" />
                 Manage Stripe Plans
               </Button>
-              <Button className="w-full" variant="secondary">
+              <Button
+                className="w-full"
+                type="button"
+                variant="secondary"
+                onClick={() => selectPlatformAction("fast-pass")}
+              >
                 <Crown className="h-4 w-4" />
                 Manage Fast Pass Defaults
               </Button>

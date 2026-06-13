@@ -13,8 +13,14 @@
 1. Create a Supabase project.
 2. Run `supabase/schema.sql`.
 3. Run `supabase/seed.sql` for sample data.
-4. Enable Google, Apple, and email magic link auth providers.
-5. Add production redirect URLs for Vercel.
+4. Enable email/password authentication.
+5. Add production redirect URLs for Vercel if OAuth or magic links are enabled later.
+6. Add these Vercel environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+
+With Supabase configured, LineUp uses persisted database-backed queues. If these variables are missing, it falls back to the in-memory public demo store.
 
 ## Stripe
 
